@@ -1,0 +1,1 @@
+mvn install:install-file -Dfile=gsp.jar -DgroupId=gudusoft.gsqlparser -DartifactId=gsqlparser -Dversion=1.5.1.6 -Dpackaging=jar

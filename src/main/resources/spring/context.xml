@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans 
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context-4.0.xsd
+    ">
+	<bean id="propertyPlaceholderConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>app.properties</value>
+				<value>jdbc.properties</value>
+				<value>ops.properties</value>
+			</list>
+		</property>
+	</bean>
+	<import resource="datasource.xml" />
+
+	<context:component-scan base-package="mogujie.sql.monitor" />
+
+	<bean id="appConfig" class="mogujie.sql.monitor.config.AppConfig">
+		<property name="debug">
+			<value type="boolean">${debug}</value>
+		</property>
+	</bean>
+
+
+	<bean id="metricChainImpl" class="mogujie.sql.monitor.service.impl.MetricChainImpl">
+		<property name="metrics">
+			<list value-type="mogujie.sql.monitor.service.Metric">
+				<ref bean="logMetricInOneMinute" />
+				<ref bean="transactionMetric" />
+				<ref bean="tableNotTxMetric" />
+				<ref bean="tableTxMetric" />
+			</list>
+		</property>
+	</bean>
+
+
+
+
+
+
+
+
+	<!-- _not_tx_QPM -->
+	<bean id="notTxAverageResponseTimeOpsServiceImpl" class="mogujie.sql.monitor.service.impl.table.QueryPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_qps_avg" />
+	</bean>
+	<bean id="notTxQueryPerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.table.AverageResponseTimeOpsServiceImpl">
+		<property name="keySuffix" value="_rt_avg" />
+	</bean>
+	<bean id="notTxSelectPerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.table.SelectPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_SPM" />
+	</bean>
+	<bean id="notTxTableLevelOpsProtoServices" class="java.util.LinkedList">
+		<constructor-arg>
+			<list>
+				<ref bean="notTxQueryPerMinuteOpsServiceImpl" />
+				<ref bean="notTxAverageResponseTimeOpsServiceImpl" />
+				<ref bean="notTxSelectPerMinuteOpsServiceImpl" />
+			</list>
+		</constructor-arg>
+	</bean>
+	<bean id="opsNotTxTableProtoImplementor" class="mogujie.sql.monitor.service.impl.ops.bridge.OpsTableProtoImplementor">
+		<property name="metric" ref="tableNotTxMetric" />
+		<property name="opsService" ref="opsServiceImpl" />
+		<property name="concreteOpsTableProtoServices" ref="notTxTableLevelOpsProtoServices" />
+	</bean>
+	<bean id="notTxTableProtoImplAbstraction" class="mogujie.sql.monitor.service.impl.ops.bridge.RefineOpsImplAbastraction">
+		<constructor-arg ref="opsNotTxTableProtoImplementor" />
+	</bean>
+
+
+
+	<!-- only tx -->
+	<bean id="onlyTxAverageResponseTimeOpsServiceImpl" class="mogujie.sql.monitor.service.impl.table.QueryPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_only_tx_QPM" />
+	</bean>
+	<bean id="onlyTxQueryPerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.table.AverageResponseTimeOpsServiceImpl">
+		<property name="keySuffix" value="_only_tx_RT" />
+	</bean>
+	<bean id="onlyTxSelectPerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.table.SelectPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_only_tx_SPM" />
+	</bean>
+	<bean id="onlyTxTableLevelOpsProtoServices" class="java.util.LinkedList">
+		<constructor-arg>
+			<list>
+				<ref bean="onlyTxQueryPerMinuteOpsServiceImpl" />
+				<ref bean="onlyTxAverageResponseTimeOpsServiceImpl" />
+				<ref bean="onlyTxSelectPerMinuteOpsServiceImpl" />
+			</list>
+		</constructor-arg>
+	</bean>
+	<bean id="opsOnlyTxTableProtoImplementor" class="mogujie.sql.monitor.service.impl.ops.bridge.OpsTableProtoImplementor">
+		<property name="metric" ref="tableTxMetric" />
+		<property name="opsService" ref="opsServiceImpl" />
+		<property name="concreteOpsTableProtoServices" ref="onlyTxTableLevelOpsProtoServices" />
+	</bean>
+	<bean id="onlyTxTableProtoImplAbstraction" class="mogujie.sql.monitor.service.impl.ops.bridge.RefineOpsImplAbastraction">
+		<constructor-arg ref="opsOnlyTxTableProtoImplementor" />
+	</bean>
+
+
+	<!-- schema level, transaction -->
+	<bean id="txSQLPerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.schema.TotalSQLInTransactionPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_schema_tx_SQLPM" />
+	</bean>
+	<bean id="transactionPerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.schema.TotalTransactionPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_schema_tx_total_QPM" />
+	</bean>
+	<bean id="txFailurePerMinuteOpsServiceImpl" class="mogujie.sql.monitor.service.impl.schema.FailureTransactionPerMinuteOpsServiceImpl">
+		<property name="keySuffix" value="_schema_tx_failure_QPM" />
+	</bean>
+	<bean id="txSchemaLevelOpsProtoServices" class="java.util.LinkedList">
+		<constructor-arg>
+			<list>
+				<ref bean="txSQLPerMinuteOpsServiceImpl" />
+				<ref bean="transactionPerMinuteOpsServiceImpl" />
+				<ref bean="txFailurePerMinuteOpsServiceImpl" />
+			</list>
+		</constructor-arg>
+	</bean>
+	<bean id="opsTxProtoImplementor" class="mogujie.sql.monitor.service.impl.ops.bridge.OpsTxProtoImplementor">
+		<property name="metric" ref="transactionMetric" />
+		<property name="opsService" ref="opsServiceImpl" />
+		<property name="concreteOpsSchemaProtoServices" ref="txSchemaLevelOpsProtoServices" />
+	</bean>
+	<bean id="txSchemaLevelProtoImplAbstraction" class="mogujie.sql.monitor.service.impl.ops.bridge.RefineOpsImplAbastraction">
+		<constructor-arg ref="opsTxProtoImplementor" />
+	</bean>
+	<!-- schema level, transaction. end -->
+
+</beans>
